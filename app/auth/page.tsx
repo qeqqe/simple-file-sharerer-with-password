@@ -1,40 +1,42 @@
 "use client";
-import { FormEventHandler, useState } from "react";
 
-export default function Home() {
-  const [file, setFile] = useState<File | undefined>();
+import { useState } from "react";
+
+export default function Auth() {
   const [password, setPassword] = useState("");
+  const [fileId, setFileId] = useState("");
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    if (!file) {
-      alert("Please select a file");
-      return;
-    }
-    if (!password) {
-      alert("Please enter a password");
-      return;
-    }
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("password", password);
-
-      const response = await fetch("http://localhost:3001/upload", {
+      const response = await fetch("http://localhost:3001/auth", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileId, password }),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const { fileId } = await response.json();
-      alert(`File uploaded successfully! Share this ID: ${fileId}`);
+      const data = await response.json();
+
+      const blob = new Blob([new Uint8Array(data.file.data)], {
+        type: data.mimetype,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error("Error uploading file:", error);
-      alert(`Failed to upload file: ${error.message}`);
+      console.error("Error:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -45,26 +47,29 @@ export default function Home() {
         id="whole-body"
       >
         <div
-          className="min-h-[35vh] min-w-[300px] md:min-w-[50vw] bg-white opacity-100 transition-all duration-100 rounded-lg shadow-lg p-8"
+          className="min-h-[15vh] min-w-[300px] md:min-w-[50vw] bg-white opacity-100 transition-all duration-100 rounded-lg shadow-lg p-8"
           id="form-container"
         >
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             <h1 className="text-3xl font-bold text-center text-gray-800">
-              Share Your Files
+              Download File
             </h1>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="file" className="text-gray-700">
-                Choose File
+              <label htmlFor="fileId" className="text-gray-700">
+                File ID
               </label>
               <input
-                type="file"
-                id="file"
+                type="text"
+                id="fileId"
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-300"
-                onChange={(e) => setFile(e.target.files?.[0])}
+                placeholder="Enter file ID"
+                value={fileId}
+                onChange={(e) => setFileId(e.target.value)}
                 required
               />
             </div>
+
             <div className="flex flex-col gap-2">
               <label htmlFor="password" className="text-gray-700">
                 Password
@@ -85,7 +90,7 @@ export default function Home() {
               className="bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
               suppressHydrationWarning
             >
-              Upload
+              Submit
             </button>
           </form>
         </div>
